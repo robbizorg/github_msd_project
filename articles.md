@@ -19,7 +19,7 @@ Brandes et al 2009: Collaboration network analysis of Wikipedia
 
 Github Archive: https://www.githubarchive.org/ -- Possible dataset to use instead of API
 
-####Structural Analysis
+#### Structural Analysis
 
 G_f: Followers Graph, directed representation of users' following relations
 
