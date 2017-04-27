@@ -1,7 +1,6 @@
 # Notes on Various Academic Articles
 
-## Coding Together at Scale:
-GitHub as a Collaborative Social Network
+## Coding Together at Scale: GitHub as a Collaborative Social Network
 
 Analyzes social ties and repository-mediated collaobration patterns, and remarkably low level of repocity of the social connections--look at how distance influences collaboration
 
