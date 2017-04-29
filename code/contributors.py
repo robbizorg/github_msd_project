@@ -11,7 +11,9 @@ with open('./repos.csv') as repofile:
 i = 0
 for repo in repos:
 	# print repo
-	r  = requests.get("https://api.github.com/repos" + repo + "/contributors?client_id=" + secret.client_id + "&client_secret=" + secret.client_secret)
+	#### DIFFERENCE FOR GITHUB VS GITHUB-RANKING
+	##### ONE HAS THE EXTRA SLASH AT THE END OF REPO AND REPO NAME
+	r  = requests.get("https://api.github.com/repos/" + repo + "/contributors?client_id=" + secret.client_id + "&client_secret=" + secret.client_secret)
 	print (r.headers['X-RateLimit-Remaining'], r.headers['X-RateLimit-Limit'])
 	# print r.text
 	with open("./contributors/" + repo.split("/")[-1] + ".json", 'w') as phil:

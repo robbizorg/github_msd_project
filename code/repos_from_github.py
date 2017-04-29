@@ -2,32 +2,31 @@
 
 import requests
 import secret
-from bs4 import BeautifulSoup
+import json
 
-NUM_REPOS = 1000
+NUM_REPOS = 2000
 repos = []
 query = "repositories"
 
-i = 2 # Counter for the Page
+i = 1 # Counter for the Page
 while len(repos) < NUM_REPOS:
     # r  = requests.get("https://github-ranking.com/" + query)
-    r = requests.get('https://api.github.com/user/' + '?client_id=' + secret.client_id + '&client_secret=' + secret.client_secret)
-    data = r.text
+    r = requests.get('https://api.github.com/search/repositories' + '?q=stars:1000..1500&sort=stars&order=desc&client_id=' + 
+        secret.client_id + '&client_secret=' + secret.client_secret + "&page=" + str(i) + "&per_page=100")
+    data = r.json()
+    # print data["items"]
+    i+=1
 
-    soup = BeautifulSoup(data)
-    result = soup.find_all("div", {"class":"list-group"})
-    for res in result:
-        for link in res.find_all('a'):
-            print((link.get('href'), len(repos)))
-            repos.append(link.get('href'))
+    try:
+        for obj in data["items"]:
+            repos.append(obj["full_name"])
+    except:
+        break
+        # print r.text
+        # print("Failed for " + str(len(repos)) + " repos and " + str(i) + "page")
 
-    ## Going to the Next Page
-    query = "repositories?page=" + str(i)
-    i += 1
+  
 
 with open("./repos.csv", 'w') as repofile:
     for repo in repos:
         repofile.write(repo + "\n")
-
-#for link in soup.find_all('a'):
-#    print(link.get('href'))
