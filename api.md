@@ -15,3 +15,5 @@ It's actually super straightforward, I think it'd be possible to look at several
 
 
 * Better Explorer of Popular Github Projects: http://gitmostwanted.com/
+
+* Getting the JSON File as Table: `df <- data.frame(matrix(unlist(users), nrow=330, byrow=T),stringsAsFactors=FALSE)`

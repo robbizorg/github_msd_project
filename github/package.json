@@ -1,0 +1,14 @@
+{
+  "name": "github-scrape",
+  "version": "1.0.0",
+  "description": "We're scraping github",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Robbie Netzorg, Hamed Nilforoshan",
+  "license": "ISC",
+  "dependencies": {
+    "github-scraper": "^3.1.0"
+  }
+}
