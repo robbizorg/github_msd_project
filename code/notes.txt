@@ -1,0 +1,2 @@
+Command to Generate the File of Untested Users:
+	diff usersuniq.txt usersuniq_1.txt | grep "^<" | sed "s/< //" > usersFixed.txt

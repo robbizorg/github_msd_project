@@ -12,7 +12,7 @@ query = "repositories"
 i = 1 # Counter for the Page
 while len(repos) < NUM_REPOS:
     # r  = requests.get("https://github-ranking.com/" + query)
-    r = requests.get('https://api.github.com/search/repositories' + '?q=stars:500..600&sort=stars&order=desc&client_id=' + 
+    r = requests.get('https://api.github.com/search/repositories' + '?q=stars:900..950&sort=stars&order=desc&client_id=' + 
         secret.client_id + '&client_secret=' + secret.client_secret + "&page=" + str(i) + "&per_page=100")
     data = r.json()
     # print data["items"]
