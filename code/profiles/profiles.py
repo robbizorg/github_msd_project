@@ -30,13 +30,15 @@ while True:
 		break
 
 	usr = usernames[0]
-	r = requests.get('https://api.github.com/user/' +usr +'?client_id=' + client_id + '&client_secret=' + client_secret)
+	r = requests.get('https://api.github.com/user/' +usr +'?client_id=' + client_id + '&client_secret=' + client_secret,timeout=5.0)
 	#Assuming it clears out
 	if r.ok:
 		with open("output.txt", "a+") as myfile:
 			out = r.json()
 			myfile.write(json.dumps(out) + "\n")
 		print("successfully got data")
+                with open("input_done.txt","a+") as myfile2:
+                    myfile2.write(usr+"\n")
 
 		del usernames[0]
 		updateInput()
