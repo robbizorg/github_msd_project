@@ -39,9 +39,11 @@ predictive <- final_data %>% mutate(has_location=ifelse(!is.na(location)>0, 1, 0
                                     bio_scaled=(bio_length-mean(bio_length))/sd(bio_length),
                                     following_scaled=(following-mean(following))/sd(following),
                                     repos_scaled=(public_repos-mean(public_repos))/sd(public_repos),
+                                    age=(as.numeric(Sys.time()-created_at)),
+                                    age_scaled=(age-mean(age))/sd(age),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists)) %>% 
   select(userId, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
-         above_pop, fol_scaled, bio_length, bio_scaled, hireable, closed_merge_frac)
+         above_pop, fol_scaled, bio_length, bio_scaled, hireable, age_scaled, closed_merge_frac)
 
 # Statistical Significance Aside:
 significance <- final_data %>% mutate(has_location=ifelse(!is.na(location)>0, 1, 0),
@@ -62,7 +64,7 @@ significance <- final_data %>% mutate(has_location=ifelse(!is.na(location)>0, 1,
 ###### WE GONNA GIVE A TED TALK
 fit <- lm(closed_merge_frac ~ has_location + has_company +
             has_blog + has_name + hireable + above_pop + following_scaled + fol_scaled +
-            bio_scaled + repos_scaled + gists_scaled, significance)
+            bio_scaled + repos_scaled + gists_scaled, age_scaled, significance)
 summary(fit)
 
 ## Significant Values: hireable, above_pop, fol_scaled, gists_scaled
@@ -77,7 +79,7 @@ for (i in seq(.01,.99, 0.01)) {
     select(-closed_merge_frac)
   data <- pred_fixed %>% select(-good_coder, -userId)
   #data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
-  #                              repos_scaled)
+  #                              repos_scaled,)
   
   # 90% Train-Test Split
   ndx <- sample(nrow(data), floor(nrow(data) * 0.9))
@@ -112,13 +114,13 @@ models %>% ggplot(aes(x=threshold,y=acc)) + geom_line() +
   labs(title="Accuracy over Thresholds (Just Bio)") +
   geom_vline(aes(xintercept = median(final_data$closed_merge_frac)), color="red")
 
-## Second: Plotting Over Thresholds for All Features
+## Second: Plotting Over Thresholds for Sig. Features
 
 models_sub <- matrix(NA, nrow=length(seq(0.01,.99,0.01)), ncol=3)
 count <- 1
 for (i in seq(.01,.99, 0.01)) {
   pred_fixed <- predictive %>% mutate(good_coder=ifelse(closed_merge_frac>i, 1, 0)) %>% 
-    select(hireable, above_pop, fol_scaled, gists_scaled, good_coder)
+    select(hireable, above_pop, fol_scaled, gists_scaled, age_scaled, good_coder)
   data <- pred_fixed %>% select(-good_coder)
   #data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
   #                              repos_scaled)

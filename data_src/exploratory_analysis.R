@@ -87,6 +87,11 @@ final_data %>% mutate(bio_length=ifelse(is.na(nchar(bio)),0,nchar(bio))) %>%
   ggplot(aes(x=bio_length, y=closed_merge_frac)) + geom_point() + 
   labs(title="Merge Frac as Function of Bio Length")
 
+# Closed_Merge_Frac as a Function of Age of User Account
+final_data %>% mutate(age=(Sys.time()-created_at)) %>%
+  ggplot(aes(x=age, y=closed_merge_frac)) + geom_point() + 
+  labs(title="Merge Frac as Function of Age")
+
 ## Let's Trying Building a Model?
 
 # Building the dataframe
@@ -104,9 +109,12 @@ predictive <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                                     bio_scaled=(bio_length-mean(bio_length))/sd(bio_length),
                                     following_scaled=(following-mean(following))/sd(following),
                                     repos_scaled=(public_repos-mean(public_repos))/sd(public_repos),
+                                    age=(as.numeric(Sys.time()-created_at)),
+                                    age_scaled=(age-mean(age))/sd(age),
+                                    email_domain=ifelse(grepl("^.*@gmail.com", email), 0, 1),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists)) %>% 
   select(userId, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
-         above_pop, fol_scaled, bio_length, bio_scaled, hireable, closed_merge_frac)
+         above_pop, fol_scaled, bio_length, bio_scaled, hireable, age_scaled, email_domain, closed_merge_frac)
 
 # Statistical Significance Aside:
 significance <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
@@ -122,6 +130,9 @@ significance <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                                     following_scaled=(following-mean(following))/sd(following),
                                     repos_scaled=(public_repos-mean(public_repos))/sd(public_repos),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists),
+                                    age=(as.numeric(Sys.time()-created_at)),
+                                    age_scaled=(age-mean(age))/sd(age),
+                                    email_domain=ifelse(grepl("^.*@gmail.com", email), 0, 1),
                                     good_coder=ifelse(closed_merge_frac>quantile(closed_merge_frac, 0.25), 1, 0))
 
 neg <- significance %>% filter(good_coder==0)
@@ -146,7 +157,7 @@ colnames(results) <- c("feature","t_statistic","p_value")
 ###### WE GONNA GIVE A TED TALK
 fit <- lm(closed_merge_frac ~ has_bio + has_location + has_company +
             has_blog + has_name + hireable + above_pop + following_scaled + fol_scaled +
-            bio_scaled + repos_scaled + gists_scaled, significance)
+            bio_scaled + repos_scaled + gists_scaled + age_scaled + email_domain, significance)
 summary(fit)
 
 ## Try Logistic Regression over different Thresholds
