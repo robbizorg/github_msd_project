@@ -111,7 +111,7 @@ predictive <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                                     repos_scaled=(public_repos-mean(public_repos))/sd(public_repos),
                                     age=(as.numeric(Sys.time()-created_at)),
                                     age_scaled=(age-mean(age))/sd(age),
-                                    email_domain=ifelse(grepl("^.*@gmail.com", email), 0, 1),
+                                    email_domain=ifelse(grepl("^.*@gmail.com|^.*@yahoo.com", email), 0, 1),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists)) %>% 
   select(userId, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
          above_pop, fol_scaled, bio_length, bio_scaled, hireable, age_scaled, email_domain, closed_merge_frac)
@@ -132,7 +132,7 @@ significance <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists),
                                     age=(as.numeric(Sys.time()-created_at)),
                                     age_scaled=(age-mean(age))/sd(age),
-                                    email_domain=ifelse(grepl("^.*@gmail.com", email), 0, 1),
+                                    email_domain=ifelse(grepl("^.*@gmail.com|^.*@yahoo.com", email), 0, 1),
                                     good_coder=ifelse(closed_merge_frac>quantile(closed_merge_frac, 0.25), 1, 0))
 
 neg <- significance %>% filter(good_coder==0)
@@ -206,9 +206,94 @@ models %>% ggplot(aes(x=threshold,y=acc)) + geom_line() +
   geom_vline(aes(xintercept = median(final_data$closed_merge_frac)), color="red")
 #data <- predictive %>% select(-good_coder, -userId)
 
+# Let's Do Some Logistic Regression with Different Polynomials
+# 
+
+K <- 1:2
+compDegree <- function(df, n, var) {
+  for (i in 1:n){
+    varname <- paste(var, i , sep=".")
+    df[[varname]] <- with(df, df[[var]] ^ i)
+  }
+  df
+}
+
+degree_models <- matrix(NA, nrow=8, ncol=3)
+for (k in K) {
+  pred_fixed <- predictive %>% mutate(good_coder=ifelse(closed_merge_frac>i, 1, 0)) %>% 
+    select(-closed_merge_frac)
+
+  for (i in k) {
+    for (name in names(pred_fixed)) {
+      if (identical(name, "good_coder") | identical(name, "userId")) {
+        next
+      }
+      
+      tmp <- compDegree(df=pred_fixed, n=i, var=name)
+      print(tmp[,c("userId",name)])
+      left_join(pred_fixed, tmp, by="userId")
+    }
+  }
+  
+  View(pred_fixed)
+  data <- pred_fixed %>% select(-good_coder, -userId, -has_bio, -has_location, -has_company,
+                                  -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
+                                  -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain)
+  #data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
+  #                              repos_scaled)
+  
+  # 90% Train-Test Split
+  ndx <- sample(nrow(data), floor(nrow(data) * 0.9))
+  train <- as.matrix(data[ndx,])
+  test <- as.matrix(data[-ndx,])
+  
+  ## Let's get the Good Coder Values
+  trainy <- pred_fixed[ndx,]$good_coder
+  test_y <- pred_fixed[-ndx,]$good_coder
+  
+  cvfit <- cv.glmnet(train, trainy, family = "binomial", type.measure = "auc")
+  
+  ## Getting the Train Accuracy
+  tmp <- data.frame(pred=(predict(cvfit,newx=train,s="lambda.min", type="class")), real=trainy)
+  acc <- tmp %>% mutate(right=ifelse(X1==real,1,0)) %>% summarize(acc=sum(right)/nrow(tmp))
+  
+  # Build the DataFrame
+  degree_models[count,] <-c(k, max(cvfit$cvm), acc[1,1])
+  count <- count + 1
+}
+degree_models <- data.frame(degree_models)
+colnames(degree_models) <- c("Degree","auc","acc")
+
+
+
+
+
+
 ## Haven't had any luck with logistic, let's try Random Forests?
 
 pred_fixed <- predictive %>% mutate(good_coder=ifelse(closed_merge_frac>median(closed_merge_frac), 1, 0)) %>% 
+  select(-closed_merge_frac)
+data <- pred_fixed %>% select(-good_coder, -userId)
+#data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
+#                              repos_scaled)
+
+# 90% Train-Test Split
+ndx <- sample(nrow(data), floor(nrow(data) * 0.9))
+train <- as.matrix(data[ndx,])
+test <- as.matrix(data[-ndx,])
+
+## Let's get the Good Coder Values
+trainy <- pred_fixed[ndx,]$good_coder
+test_y <- pred_fixed[-ndx,]$good_coder
+
+forrest <- randomForest(train, as.factor(trainy))
+forrest ## As you can see, it doesn't do much better
+
+
+### Doing the Top Quartile and the Bottom Quartile
+
+pred_fixed <- predictive %>% filter(closed_merge_frac>quantile(closed_merge_frac,0.75) | closed_merge_frac<quantile(closed_merge_frac,0.25)) %>% 
+  mutate(good_coder=ifelse(closed_merge_frac>quantile(closed_merge_frac, 0.75), 1, 0)) %>% 
   select(-closed_merge_frac)
 data <- pred_fixed %>% select(-good_coder, -userId)
 #data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
