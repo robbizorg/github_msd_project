@@ -1,0 +1,11 @@
+Notes on Distrubtion:
+	Users: 23.25% of users have Bios
+		49.88% of Users have Companies
+		55.49% of Users have Blogs
+		90.59% of Users have Names (listed)
+		73.56% of Users have Location (listed)
+	Going from 5 to 15 for the Count of Pull Requests drastically reduces the number of users to ~10,000
+
+Notes on Topic Modeling:
+	Used the Following StackOverflow Post to download topicmodels:
+		http://stackoverflow.com/questions/24172188/how-can-i-install-topicmodels-package-in-r
