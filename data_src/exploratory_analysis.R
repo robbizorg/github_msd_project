@@ -211,7 +211,8 @@ models %>% ggplot(aes(x=threshold,y=acc)) + geom_line() +
 
 K <- 1:2
 compDegree <- function(df, n, var) {
-  for (i in 1:n){
+  for (i in 1:(n+1)){
+    #print(i)
     varname <- paste(var, i , sep=".")
     df[[varname]] <- with(df, df[[var]] ^ i)
   }
@@ -220,25 +221,23 @@ compDegree <- function(df, n, var) {
 
 degree_models <- matrix(NA, nrow=8, ncol=3)
 for (k in K) {
-  pred_fixed <- predictive %>% mutate(good_coder=ifelse(closed_merge_frac>i, 1, 0)) %>% 
+  pred_fixed <- predictive %>% mutate(good_coder=ifelse(closed_merge_frac>median(closed_merge_frac), 1, 0)) %>% 
     select(-closed_merge_frac)
-
-  for (i in k) {
-    for (name in names(pred_fixed)) {
-      if (identical(name, "good_coder") | identical(name, "userId")) {
-        next
-      }
-      
-      tmp <- compDegree(df=pred_fixed, n=i, var=name)
-      print(tmp[,c("userId",name)])
-      left_join(pred_fixed, tmp, by="userId")
-    }
-  }
   
-  View(pred_fixed)
-  data <- pred_fixed %>% select(-good_coder, -userId, -has_bio, -has_location, -has_company,
-                                  -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                  -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain)
+  pred_result <- predictive %>% select(userId)
+  
+  for (name in c("fol_scaled","bio_scaled","repos_scaled","following_scaled","gists_scaled","age_scaled")) {
+    if (identical(name, "good_coder") | identical(name, "userId")) {
+      next
+    }
+    
+    tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -has_bio, -has_location, -has_company,
+                                                             -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
+                                                             -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+    pred_result <- left_join(pred_result, tmp, by="userId")
+  }
+
+  data <- pred_result %>% select(-userId)
   #data <- pred_fixed %>% select(above_pop, fol_scaled, bio_scaled, bio_length, hireable,
   #                              repos_scaled)
   
