@@ -8,7 +8,7 @@ library(combinat)
 library(plotrix)
 library(reshape)
 set.seed(42)
-final_data <- read_csv("~/Documents/MSD/github_project/data/final_data.csv")
+final_data <- read_csv("./data/final_data.csv")
 final_data <- final_data %>% mutate(followers = ifelse(is.na(followers),0,followers),
                                     following = ifelse(is.na(following),0,following),
                                     public_repos = ifelse(is.na(public_repos),0,public_repos),
