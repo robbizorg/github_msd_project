@@ -30,10 +30,11 @@ data <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                               gists_scaled=(public_gists-mean(public_gists))/sd(public_gists),
                               age=(as.numeric(Sys.time()-created_at)),
                               age_scaled=(age-mean(age))/sd(age),
+                              has_email=ifelse(!is.na(email)>0, 1, 0),
                               email_domain=ifelse(grepl("^.*@gmail.com|^.*@yahoo.com|^.*@outlook.com|^.*@aol.com|^.*@zoho.com|^.*@mail.com|^.*@yandex|^.*@protonmail|^.*@gmx|^.*@icloud",
                                                         email)|is.na(email), 0, 1),
                               good_coder=ifelse(closed_merge_frac>quantile(closed_merge_frac, 0.25), 1, 0)) %>%
-  select(userId, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
+  select(userId, has_email, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
          above_pop, fol_scaled, bio_length, bio_scaled, hireable, age, age_scaled, email_domain, closed_merge_frac)
 remove_cols <- c("userId", "following_scaled", "repos_scaled", "gists_scaled", "fol_scaled", "bio_scaled", "age_scaled", "closed_merge_frac", "bio_length")
 data2 <- data[, !(names(data) %in% remove_cols)]
@@ -42,7 +43,7 @@ hist(final_data$closed_merge_frac, xlab="Pull Request Merge Rate", ylab="Frequen
 
 ###################### Graph 3
 # Compute closed_merge_frac for each boolean variable
-indicator_cols <- c("has_bio", "has_company", "has_blog", "has_name", "hireable", "email_domain")
+indicator_cols <- c("has_bio", "has_company", "has_blog", "has_name", "hireable", "email_domain", "has_email")
 
 summary <- data %>% group_by(has_location) %>% summarise(mean_frac=mean(closed_merge_frac))
 summary_sds <- data %>% group_by(has_location) %>% summarise(sd_frac=std.error(closed_merge_frac))
@@ -62,8 +63,8 @@ for (i in 1:length(indicator_cols)) {
   summary_sds <- merge(summary_sds, sds, by="indicator")
 }
 
-colnames(summary) <- c("indicator", "location", "bio", "company", "blog", "name", "hireable", "domain")
-colnames(summary_sds) <- c("indicator", "location", "bio", "company", "blog", "name", "hireable", "domain")
+colnames(summary) <- c("indicator", "location", "bio", "company", "blog", "name", "hireable", "domain", "has email")
+colnames(summary_sds) <- c("indicator", "location", "bio", "company", "blog", "name", "hireable", "domain", "has email")
 
 graph_data_meanfrac <- melt(summary,id.vars="indicator")
 graph_data_meanfrac_sds <- melt(summary_sds, id.vars="indicator")
@@ -157,6 +158,9 @@ for (i in cont_vars) {
 }
 
 
+##################################
+
+
 ## Let's Trying Building a Model
 
 # Building the dataframe
@@ -176,10 +180,11 @@ predictive <- final_data %>% mutate(has_bio=ifelse(!is.na(bio)>0, 1, 0),
                                     repos_scaled=(public_repos-mean(public_repos))/sd(public_repos),
                                     age=(as.numeric(Sys.time()-created_at)),
                                     age_scaled=(age-mean(age))/sd(age),
+                                    has_email=ifelse(!is.na(email)>0, 1, 0),
                                     email_domain=ifelse(grepl("^.*@gmail.com|^.*@yahoo.com|^.*@outlook.com|^.*@aol.com|^.*@zoho.com|^.*@mail.com|^.*@yandex|^.*@protonmail|^.*@gmx|^.*@icloud",
                                                               email)|is.na(email), 0, 1),
                                     gists_scaled=(public_gists-mean(public_gists))/sd(public_gists)) %>% 
-  select(userId, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
+  select(userId, has_email, has_bio, has_location, has_company, has_blog, has_name, following_scaled, repos_scaled, gists_scaled,
          above_pop, fol_scaled, bio_length, bio_scaled, hireable, age_scaled, email_domain, closed_merge_frac)
 
 ## Holdout Dataset:
@@ -215,14 +220,14 @@ pred_fixed <- kfold_predictive %>% mutate(good_coder=closed_merge_frac) %>%
 
 pred_result <- kfold_predictive %>% select(userId)
 
-for (name in c("has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
+for (name in c("has_email", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
   if (identical(name, "good_coder") | identical(name, "userId")) {
     next
   }
   
   tmp <- compDegree(df=pred_fixed, n=1, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                              -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                             -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                             -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
   pred_result <- left_join(pred_result, tmp, by="userId")
 }
 
@@ -298,7 +303,7 @@ for (k in 1:K) {
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -383,7 +388,7 @@ for (k in 1:K) {
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -460,14 +465,14 @@ for (k in 1:K) {
   
   pred_result <- kfold_predictive %>% select(userId)
   
-  for (name in c("repos_scaled", "gists_scaled", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
+  for (name in c("repos_scaled", "gists_scaled", "has_email", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
     if (identical(name, "good_coder") | identical(name, "userId")) {
       next
     }
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -545,14 +550,14 @@ for (k in 1:K) {
   
   pred_result <- kfold_predictive %>% select(userId)
   
-  for (name in c("fol_scaled", "following_scaled", "age_scaled", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
+  for (name in c("fol_scaled", "following_scaled", "age_scaled", "has_email", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable")) {
     if (identical(name, "good_coder") | identical(name, "userId")) {
       next
     }
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -637,7 +642,7 @@ for (k in 1:K) {
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -714,14 +719,14 @@ for (k in 1:K) {
   
   pred_result <- kfold_predictive %>% select(userId)
   
-  for (name in c("has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable", "repos_scaled", "gists_scaled", "fol_scaled", "following_scaled", "age_scaled")) {
+  for (name in c("has_email", "has_name", "has_bio", "has_blog", "has_location", "email_domain", "has_company", "hireable", "repos_scaled", "gists_scaled", "fol_scaled", "following_scaled", "age_scaled")) {
     if (identical(name, "good_coder") | identical(name, "userId")) {
       next
     }
     
     tmp <- compDegree(df=pred_fixed, n=k, var=name) %>% select(-good_coder, -fold, -has_bio, -has_location, -has_company,
                                                                -has_blog, -has_name, -hireable, -above_pop, -following_scaled, -fol_scaled,
-                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length)
+                                                               -bio_scaled, -repos_scaled, -gists_scaled, -age_scaled, -email_domain, -bio_length, -has_email)
     pred_result <- left_join(pred_result, tmp, by="userId")
   }
   
@@ -791,7 +796,7 @@ total_results
 pred_fixed <- predictive %>% mutate(good_coder=closed_merge_frac) %>% 
   select(-closed_merge_frac)
 
-my_data <- pred_fixed %>% select(good_coder, has_name, has_bio, has_blog, has_location, 
+my_data <- pred_fixed %>% select(good_coder, has_email, has_name, has_bio, has_blog, has_location, 
                                  email_domain, has_company, hireable, repos_scaled,
                                  gists_scaled, fol_scaled, following_scaled, age_scaled)
 
@@ -805,7 +810,7 @@ holdout_results <- data.frame()
 ## All the Different Models
 
 ## Indicators
-my_data <- pred_fixed %>% select(good_coder, has_name, has_bio, has_blog, has_location, 
+my_data <- pred_fixed %>% select(good_coder, has_email, has_name, has_bio, has_blog, has_location, 
                                  email_domain, has_company, hireable)
 
 model_indicators <- lm(good_coder ~ ., data = my_data)
@@ -841,7 +846,7 @@ rsme_holdout <- holdout_cpy %>% summarize(rsme_train=sqrt(mean((pred - good_code
 holdout_results <- rbind(holdout_results, data.frame(rsme=rsme_holdout[1]))
 
 ## Indicators + repos
-my_data <- pred_fixed %>% select(good_coder, has_name, has_bio, has_blog, has_location, 
+my_data <- pred_fixed %>% select(good_coder, has_email, has_name, has_bio, has_blog, has_location, 
                                  email_domain, has_company, hireable, repos_scaled, gists_scaled)
 
 model_indi_repo <- lm(good_coder ~ ., data = my_data)
@@ -853,7 +858,7 @@ rsme_holdout <- holdout_cpy %>% summarize(rsme_train=sqrt(mean((pred - good_code
 holdout_results <- rbind(holdout_results, data.frame(rsme=rsme_holdout[1]))
 
 ## Indicators + Followers/ings
-my_data <- pred_fixed %>% select(good_coder, has_name, has_bio, has_blog, has_location, 
+my_data <- pred_fixed %>% select(good_coder, has_email, has_name, has_bio, has_blog, has_location, 
                                  email_domain, has_company, hireable, fol_scaled, following_scaled, age_scaled)
 
 model_indi_fol <- lm(good_coder ~ ., data = my_data)
@@ -877,7 +882,7 @@ holdout_results <- rbind(holdout_results, data.frame(rsme=rsme_holdout[1]))
 
 
 ## All
-my_data <- pred_fixed %>% select(good_coder, has_name, has_bio, has_blog, has_location, 
+my_data <- pred_fixed %>% select(good_coder, has_email, has_name, has_bio, has_blog, has_location, 
                                  email_domain, has_company, hireable, repos_scaled,
                                  gists_scaled, fol_scaled, following_scaled, age_scaled)
 
